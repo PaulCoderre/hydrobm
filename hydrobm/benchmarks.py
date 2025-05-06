@@ -22,7 +22,7 @@ def bm_mean_flow(data, cal_mask, streamflow="streamflow"):
     ----------
     data : pandas DataFrame
         Input data containing streamflow column.
-        cal_mask : pandas Series
+    cal_mask : pandas Series
         Boolean mask for the calculation period.
     streamflow : str, optional
         Name of the streamflow column in the input data. Default is ['streamflow'].

@@ -110,7 +110,11 @@ todo_include_todos = False
 html_theme = "sphinx_rtd_theme"
 import sphinx_rtd_theme
 
-html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+# 2025-05-06: This is not (or no longer?) necessary
+#   Having it in here generates a warning in the github workflow that builds the docs
+#   and because we're running Sphinx with the -W option this in turn becomes an error
+#   Disabling (but keeping) now to trial if we can safely remove this
+# html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
