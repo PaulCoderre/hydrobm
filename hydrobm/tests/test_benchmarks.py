@@ -281,6 +281,17 @@ def test_monthly_rainfall_runoff_ratio_to_monthly():
         bm_t.groupby(bm_t.index.month).nunique() == 3
     ), "Failed monthly rainfall-runoff ratio to monthly T2c."
 
+    # Test 3: set precipitation values for January  to 0, should result in no NaN in timeseries,
+    # and benchmark flows for January being 0
+    data=create_sines(period=2)
+    data.loc[data.index.month == 1, "precipitation"] = 0.0
+    cal_mask= data.index
+    bm_v, bm_t = create_bm(data, "monthly_rainfall_runoff_ratio_to_monthly", cal_mask)
+    assert not bm_t["bm_monthly_rainfall_runoff_ratio_to_monthly"].isna().any(), \
+        "Failed monthly rainfall-runoff ratio to monthly T3a: found NaN values"
+    assert (bm_t.loc[bm_t.index.month == 1, "bm_monthly_rainfall_runoff_ratio_to_monthly"] == 0).all(), \
+        "Failed monthly rainfall-runoff ratio to monthly T3b: not all January values are 0"
+
 
 def test_monthly_rainfall_runoff_ratio_to_daily():
     # Test 1: 1 year of data should have 12 benchmark values in bm_v,
@@ -311,6 +322,17 @@ def test_monthly_rainfall_runoff_ratio_to_daily():
         bm_t.groupby(bm_t.index.dayofyear).nunique() == 3
     ), "Failed monthly rainfall-runoff ratio to daily T2c."
 
+    # Test 3: set precipitation values for January  to 0, should result in no NaN in timeseries,
+    # and benchmark flows for January being 0
+    data=create_sines(period=2)
+    data.loc[data.index.month == 1, "precipitation"] = 0.0
+    cal_mask= data.index
+    bm_v, bm_t = create_bm(data, "monthly_rainfall_runoff_ratio_to_monthly", cal_mask)
+    assert not bm_t["bm_monthly_rainfall_runoff_ratio_to_monthly"].isna().any(), \
+        "Failed monthly rainfall-runoff ratio to monthly T3a: found NaN values"
+    assert (bm_t.loc[bm_t.index.month == 1, "bm_monthly_rainfall_runoff_ratio_to_monthly"] == 0).all(), \
+        "Failed monthly rainfall-runoff ratio to monthly T3b: not all January values are 0"
+
 
 def test_monthly_rainfall_runoff_ratio_to_timestep():
     # Test 1: 1 year of data should have 12 benchmark values in bm_v, and 24 unique values on most days
@@ -327,6 +349,17 @@ def test_monthly_rainfall_runoff_ratio_to_timestep():
         int(bm_t["bm_monthly_rainfall_runoff_ratio_to_timestep"].groupby(bm_t.index.dayofyear).nunique().median())
         == 24
     ), "Failed monthly rainfall-runoff ratio to timestep T1c."
+
+    # Test 3: set precipitation values for January  to 0, should result in no NaN in timeseries,
+    # and benchmark flows for January being 0
+    data=create_sines(period=2)
+    data.loc[data.index.month == 1, "precipitation"] = 0.0
+    cal_mask= data.index
+    bm_v, bm_t = create_bm(data, "monthly_rainfall_runoff_ratio_to_monthly", cal_mask)
+    assert not bm_t["bm_monthly_rainfall_runoff_ratio_to_monthly"].isna().any(), \
+        "Failed monthly rainfall-runoff ratio to monthly T3a: found NaN values"
+    assert (bm_t.loc[bm_t.index.month == 1, "bm_monthly_rainfall_runoff_ratio_to_monthly"] == 0).all(), \
+        "Failed monthly rainfall-runoff ratio to monthly T3b: not all January values are 0"
 
 
 def test_scaled_precipitation_benchmark():

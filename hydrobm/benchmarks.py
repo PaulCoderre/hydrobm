@@ -487,7 +487,11 @@ def monthly_rainfall_runoff_ratio_to_monthly(
     cal_set = data.loc[cal_mask]
     monthly_mean_q = cal_set[streamflow].groupby(cal_set.index.month).mean()
     monthly_mean_p = cal_set[precipitation].groupby(cal_set.index.month).mean()
-    bm_vals = monthly_mean_q / monthly_mean_p  # (at most) 12 rainfall-runoff ratios
+    # Safe calculation: only divide when precipitation > 0, else set 0
+    bm_vals = pd.Series(
+        np.where(monthly_mean_p > 0, monthly_mean_q / monthly_mean_p, 0),
+        index=monthly_mean_p.index
+    )  # (at most) 12 rainfall-runoff ratios
     bm_vals = bm_vals.reindex(range(1, 13))  # fill missing months with NaN, does nothing if already 12
     qbm = pd.DataFrame({"bm_monthly_rainfall_runoff_ratio_to_monthly": np.nan}, index=data.index)
     for year in qbm.index.year.unique():  # for each year
@@ -529,7 +533,11 @@ def monthly_rainfall_runoff_ratio_to_daily(data, cal_mask, precipitation="precip
     cal_set = data.loc[cal_mask]
     monthly_mean_q = cal_set[streamflow].groupby(cal_set.index.month).mean()
     monthly_mean_p = cal_set[precipitation].groupby(cal_set.index.month).mean()
-    bm_vals = monthly_mean_q / monthly_mean_p  # (at most) 12 rainfall-runoff ratios
+    # Safe calculation: only divide when precipitation > 0, else set 0
+    bm_vals = pd.Series(
+        np.where(monthly_mean_p > 0, monthly_mean_q / monthly_mean_p, 0),
+        index=monthly_mean_p.index
+    )  # (at most) 12 rainfall-runoff ratios
     bm_vals = bm_vals.reindex(range(1, 13))  # fill missing months with NaN, does nothing if already 12
     qbm = pd.DataFrame({"bm_monthly_rainfall_runoff_ratio_to_daily": np.nan}, index=data.index)
     for year in qbm.index.year.unique():  # for each year
@@ -572,7 +580,11 @@ def monthly_rainfall_runoff_ratio_to_timestep(
     cal_set = data.loc[cal_mask]
     monthly_mean_q = cal_set[streamflow].groupby(cal_set.index.month).mean()
     monthly_mean_p = cal_set[precipitation].groupby(cal_set.index.month).mean()
-    bm_vals = monthly_mean_q / monthly_mean_p  # (at most) 12 rainfall-runoff ratios
+    # Safe calculation: only divide when precipitation > 0, else set 0
+    bm_vals = pd.Series(
+        np.where(monthly_mean_p > 0, monthly_mean_q / monthly_mean_p, 0),
+        index=monthly_mean_p.index
+    )  # (at most) 12 rainfall-runoff ratios
     bm_vals = bm_vals.reindex(range(1, 13))  # fill missing months with NaN, does nothing if already 12
     qbm = pd.DataFrame(
         {
