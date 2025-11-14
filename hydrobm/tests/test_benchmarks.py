@@ -283,14 +283,16 @@ def test_monthly_rainfall_runoff_ratio_to_monthly():
 
     # Test 3: set precipitation values for January  to 0, should result in no NaN in timeseries,
     # and benchmark flows for January being 0
-    data=create_sines(period=2)
+    data = create_sines(period=2)
     data.loc[data.index.month == 1, "precipitation"] = 0.0
-    cal_mask= data.index
+    cal_mask = data.index
     bm_v, bm_t = create_bm(data, "monthly_rainfall_runoff_ratio_to_monthly", cal_mask)
-    assert not bm_t["bm_monthly_rainfall_runoff_ratio_to_monthly"].isna().any(), \
-        "Failed monthly rainfall-runoff ratio to monthly T3a: found NaN values"
-    assert (bm_t.loc[bm_t.index.month == 1, "bm_monthly_rainfall_runoff_ratio_to_monthly"] == 0).all(), \
-        "Failed monthly rainfall-runoff ratio to monthly T3b: not all January values are 0"
+    assert (
+        not bm_t["bm_monthly_rainfall_runoff_ratio_to_monthly"].isna().any()
+    ), "Failed monthly rainfall-runoff ratio to monthly T3a: found NaN values"
+    assert (
+        bm_t.loc[bm_t.index.month == 1, "bm_monthly_rainfall_runoff_ratio_to_monthly"] == 0
+    ).all(), "Failed monthly rainfall-runoff ratio to monthly T3b: not all January values are 0"
 
 
 def test_monthly_rainfall_runoff_ratio_to_daily():
@@ -324,14 +326,16 @@ def test_monthly_rainfall_runoff_ratio_to_daily():
 
     # Test 3: set precipitation values for January  to 0, should result in no NaN in timeseries,
     # and benchmark flows for January being 0
-    data=create_sines(period=2)
+    data = create_sines(period=2)
     data.loc[data.index.month == 1, "precipitation"] = 0.0
-    cal_mask= data.index
+    cal_mask = data.index
     bm_v, bm_t = create_bm(data, "monthly_rainfall_runoff_ratio_to_monthly", cal_mask)
-    assert not bm_t["bm_monthly_rainfall_runoff_ratio_to_monthly"].isna().any(), \
-        "Failed monthly rainfall-runoff ratio to monthly T3a: found NaN values"
-    assert (bm_t.loc[bm_t.index.month == 1, "bm_monthly_rainfall_runoff_ratio_to_monthly"] == 0).all(), \
-        "Failed monthly rainfall-runoff ratio to monthly T3b: not all January values are 0"
+    assert (
+        not bm_t["bm_monthly_rainfall_runoff_ratio_to_monthly"].isna().any()
+    ), "Failed monthly rainfall-runoff ratio to monthly T3a: found NaN values"
+    assert (
+        bm_t.loc[bm_t.index.month == 1, "bm_monthly_rainfall_runoff_ratio_to_monthly"] == 0
+    ).all(), "Failed monthly rainfall-runoff ratio to monthly T3b: not all January values are 0"
 
 
 def test_monthly_rainfall_runoff_ratio_to_timestep():
@@ -352,14 +356,16 @@ def test_monthly_rainfall_runoff_ratio_to_timestep():
 
     # Test 3: set precipitation values for January  to 0, should result in no NaN in timeseries,
     # and benchmark flows for January being 0
-    data=create_sines(period=2)
+    data = create_sines(period=2)
     data.loc[data.index.month == 1, "precipitation"] = 0.0
-    cal_mask= data.index
+    cal_mask = data.index
     bm_v, bm_t = create_bm(data, "monthly_rainfall_runoff_ratio_to_monthly", cal_mask)
-    assert not bm_t["bm_monthly_rainfall_runoff_ratio_to_monthly"].isna().any(), \
-        "Failed monthly rainfall-runoff ratio to monthly T3a: found NaN values"
-    assert (bm_t.loc[bm_t.index.month == 1, "bm_monthly_rainfall_runoff_ratio_to_monthly"] == 0).all(), \
-        "Failed monthly rainfall-runoff ratio to monthly T3b: not all January values are 0"
+    assert (
+        not bm_t["bm_monthly_rainfall_runoff_ratio_to_monthly"].isna().any()
+    ), "Failed monthly rainfall-runoff ratio to monthly T3a: found NaN values"
+    assert (
+        bm_t.loc[bm_t.index.month == 1, "bm_monthly_rainfall_runoff_ratio_to_monthly"] == 0
+    ).all(), "Failed monthly rainfall-runoff ratio to monthly T3b: not all January values are 0"
 
 
 def test_scaled_precipitation_benchmark():
