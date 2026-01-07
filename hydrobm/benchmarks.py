@@ -787,11 +787,6 @@ def bm_annual_scaled_daily_mean_flow(data, cal_mask, precipitation="precipitatio
     complete_year_indices = complete_years_all[complete_years_all].index
     bm_vals.loc[complete_year_indices] = annual_precip_all.loc[complete_year_indices] / mean_annual_precip_cal
 
-    print(f"\nbm_vals for 1997: {bm_vals[1997]:.6f}")
-    print(f"1997 annual precip: {annual_precip_all[1997]:.2f}")
-    print(f"Mean annual precip (cal): {mean_annual_precip_cal:.2f}")
-    print(f"Ratio: {annual_precip_all[1997] / mean_annual_precip_cal:.6f}")
-
     # Step 5: Create the benchmark time series
     # Map daily mean flow to all days
     base_flow_series = data.index.dayofyear.map(daily_mean_flow)
@@ -799,21 +794,8 @@ def bm_annual_scaled_daily_mean_flow(data, cal_mask, precipitation="precipitatio
     # Map annual scaling factors to all days
     scaling_series = data.index.year.map(bm_vals)
 
-    # Diagnostic: check what scaling is being applied to 1997
-    year_1997_mask = data.index.year == 1997
-    scaling_1997 = pd.Series(scaling_series, index=data.index)[year_1997_mask]
-    print(f"\nScaling series for 1997 (first 5 values): {list(scaling_1997.head())}")
-    print(f"Scaling series for 1997 (unique values): {scaling_1997.unique()}")
-
     # Multiply base flow by scaling factors (vectorized!)
     qbm = pd.DataFrame({"bm_annual_scaled_daily_mean_flow": base_flow_series * scaling_series}, index=data.index)
-
-    # Final check
-    year_1997_qbm = qbm.loc[year_1997_mask, "bm_annual_scaled_daily_mean_flow"]
-    year_1997_base = base_flow_series[year_1997_mask]
-    actual_ratio = (year_1997_qbm / year_1997_base).mean()
-    print(f"\nActual ratio in output: {actual_ratio:.6f}")
-    print(f"Expected ratio (bm_vals[1997]): {bm_vals[1997]:.6f}")
 
     return bm_vals, qbm
 
