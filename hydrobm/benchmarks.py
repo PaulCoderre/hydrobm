@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 from .metrics import calculate_metric
-from .utils import optimize_apb, optimize_aspb
+from .utils import optimize_apb, optimize_aspb, estimate_eckhardt_parameters, eckhardt_filter
 
 # from scipy.optimize import Bounds, minimize, minimize_scalar
 
@@ -269,6 +269,93 @@ def bm_daily_median_flow(data, cal_mask, streamflow="streamflow"):
     for doy in qbm.index.dayofyear.unique():
         if doy in bm_vals.index:  # takes care of cases where for some reason we have no cal data for this day
             qbm.loc[qbm.index.dayofyear == doy, "bm_daily_median_flow"] = bm_vals[bm_vals.index == doy].values
+    return bm_vals, qbm
+
+
+def bm_eckhardt_baseflow(
+    data,
+    cal_mask,
+    precipitation="precipitation",
+    streamflow="streamflow",
+    precip_window_days=3,
+    precip_threshold=0.1,
+):
+    """
+    Baseflow separation using Eckhardt filter to create a mean annual baseflow signal.
+
+    Estimates both k (recession coefficient) and BFI_max (maximum baseflow index) from
+    the data. The benchmark represents the average daily baseflow for the calibration period.
+
+    The Eckhardt method was selected because it was found to be the best of 9
+    evaluated baseflow separation methods in Xie et al. (2020). Parameters are
+    estimated using: (1) recession analysis for k, and (2) backward filter method
+    (Collischonn & Fan 2013) for BFI_max.
+
+    Parameters
+    ----------
+    data : pandas DataFrame
+        Input data containing precipitation and streamflow columns.
+    cal_mask : pandas Series
+        Boolean mask for the calibration period.
+    precipitation : str, optional
+        Name of the precipitation column. Default is 'precipitation'.
+    streamflow : str, optional
+        Name of the streamflow column. Default is 'streamflow'.
+    precip_window : int, optional
+        Number of timesteps to check for precipitation when identifying recessions.
+        Default is 3. Adjust for sub-daily data (e.g., 72 for 3 days of hourly data).
+    precip_threshold : float, optional
+        Precipitation threshold in same units as precip data. Default is 0.1.
+
+    Returns
+    -------
+    bm_vals : dict
+        Dictionary containing:
+        - 'k': Recession coefficient (estimated from recessions)
+        - 'BFI_max': Maximum baseflow index (estimated from backward filter)
+        - 'baseflow_climatology': Mean baseflow for each day of year
+    qbm : pandas DataFrame
+        Benchmark baseflow time series representing the mean annual baseflow cycle.
+
+    References
+    ----------
+    Eckhardt, K. (2005). How to construct recursive digital filters for baseflow separation.
+    Hydrological Processes, 19(2), 507-515.
+
+    Collischonn, W., & Fan, F. M. (2013). Defining parameters for Eckhardt's
+    digital baseflow filter. Hydrological Processes, 27(18), 2614-2622.
+    https://doi.org/10.1002/hyp.9391
+
+    Xie, J., Liu, X., Wang, K., Yang, T., Liang, K., & Liu, C. (2020). Evaluation of typical
+    methods for baseflow separation in the contiguous United States. Journal of Hydrology, 583,
+    124628. https://doi.org/10.1016/j.jhydrol.2020.124628
+    """
+    # Trim precip and flow to calibration period
+    cal_precip = data[precipitation].loc[cal_mask]
+    cal_flow = data[streamflow].loc[cal_mask]
+
+    # Step 1: Estimate both k and BFI_max from calibration data
+    k, BFI_max = estimate_eckhardt_parameters(
+        cal_flow, cal_precip, precip_window_days=precip_window_days, precip_threshold=precip_threshold
+    )
+
+    # Step 2: Separate baseflow from calibration period
+    baseflow_cal = eckhardt_filter(cal_flow, BFI_max=BFI_max, k=k)
+
+    # Step 3: Create baseflow climatology (mean baseflow for each day of year)
+    # This represents the typical annual baseflow cycle
+    baseflow_by_doy = baseflow_cal.groupby(baseflow_cal.index.dayofyear).mean()
+
+    # Step 4: Extend baseflow climatology to full period
+    # Each day is assigned its climatological baseflow value
+    baseflow_full = data.index.dayofyear.map(baseflow_by_doy)
+
+    # Step 5: Create benchmark time series
+    qbm = pd.DataFrame({"bm_eckhardt_baseflow": baseflow_full}, index=data.index)
+
+    # Package return values
+    bm_vals = (k, BFI_max)
+
     return bm_vals, qbm
 
 
@@ -636,6 +723,182 @@ def scaled_precipitation_benchmark(data, cal_mask, precipitation="precipitation"
     return bm_vals, qbm
 
 
+def bm_annual_scaled_daily_mean_flow(data, cal_mask, precipitation="precipitation", streamflow="streamflow"):
+    """Calculate the daily mean flow scaled by annual precipitation anomalies.
+
+    This benchmark combines the daily mean flow climatology with annual precipitation
+    scaling. For each year, it scales the daily mean flow pattern based on how much
+    higher or lower that year's total precipitation is compared to the long-term average
+    during the calibration period. Scaling is only applied to full years.
+
+    Parameters
+    ----------
+    data : pandas DataFrame
+        Input data containing precipitation and streamflow columns.
+    cal_mask : pandas Series
+        Boolean mask for the calibration period.
+    precipitation : str, optional
+        Name of the precipitation column in the input data. Default is 'precipitation'.
+    streamflow : str, optional
+        Name of the streamflow column in the input data. Default is 'streamflow'.
+
+    Returns
+    -------
+    bm_vals : pandas Series
+        Series containing annual scaling factors (1.0 for incomplete years).
+    qbm : pandas DataFrame
+        Benchmark flow time series for the scaled daily mean flow benchmark model.
+
+    """
+
+    # Step 0: Detect timestep and set threshold for complete year
+    time_diffs = data.index.to_series().diff().median()
+    timesteps_per_day = pd.Timedelta("1 day") / time_diffs
+    complete_year_threshold = int(365 * timesteps_per_day)
+
+    # Step 1: Get the daily mean flow climatology from calibration period
+    cal_set = data[streamflow].loc[cal_mask]
+    daily_mean_flow = cal_set.groupby(cal_set.index.dayofyear).mean()
+
+    # Step 2: Calculate mean annual precipitation during calibration period
+    cal_precip = data[precipitation].loc[cal_mask]
+
+    # Group by year and sum to get annual totals during calibration
+    annual_precip_cal = cal_precip.groupby(cal_precip.index.year).sum()
+
+    # Count timesteps per year to identify complete years only
+    timesteps_per_year_cal = cal_precip.groupby(cal_precip.index.year).count()
+
+    # Only use complete years for calculating the baseline mean
+    complete_years = timesteps_per_year_cal >= complete_year_threshold
+    mean_annual_precip_cal = annual_precip_cal[complete_years].mean()
+
+    # Step 3: Calculate annual precipitation for all years in the dataset
+    annual_precip_all = data[precipitation].groupby(data.index.year).sum()
+
+    # Identify complete years in the full dataset
+    timesteps_per_year_all = data[precipitation].groupby(data.index.year).count()
+    complete_years_all = timesteps_per_year_all >= complete_year_threshold
+
+    # Step 4: Calculate scaling factors only for complete years
+    bm_vals = pd.Series(1.0, index=annual_precip_all.index)
+
+    # Only calculate scaling for complete years
+    complete_year_indices = complete_years_all[complete_years_all].index
+    bm_vals.loc[complete_year_indices] = annual_precip_all.loc[complete_year_indices] / mean_annual_precip_cal
+
+    print(f"\nbm_vals for 1997: {bm_vals[1997]:.6f}")
+    print(f"1997 annual precip: {annual_precip_all[1997]:.2f}")
+    print(f"Mean annual precip (cal): {mean_annual_precip_cal:.2f}")
+    print(f"Ratio: {annual_precip_all[1997] / mean_annual_precip_cal:.6f}")
+
+    # Step 5: Create the benchmark time series
+    # Map daily mean flow to all days
+    base_flow_series = data.index.dayofyear.map(daily_mean_flow)
+
+    # Map annual scaling factors to all days
+    scaling_series = data.index.year.map(bm_vals)
+
+    # Diagnostic: check what scaling is being applied to 1997
+    year_1997_mask = data.index.year == 1997
+    scaling_1997 = pd.Series(scaling_series, index=data.index)[year_1997_mask]
+    print(f"\nScaling series for 1997 (first 5 values): {list(scaling_1997.head())}")
+    print(f"Scaling series for 1997 (unique values): {scaling_1997.unique()}")
+
+    # Multiply base flow by scaling factors (vectorized!)
+    qbm = pd.DataFrame({"bm_annual_scaled_daily_mean_flow": base_flow_series * scaling_series}, index=data.index)
+
+    # Final check
+    year_1997_qbm = qbm.loc[year_1997_mask, "bm_annual_scaled_daily_mean_flow"]
+    year_1997_base = base_flow_series[year_1997_mask]
+    actual_ratio = (year_1997_qbm / year_1997_base).mean()
+    print(f"\nActual ratio in output: {actual_ratio:.6f}")
+    print(f"Expected ratio (bm_vals[1997]): {bm_vals[1997]:.6f}")
+
+    return bm_vals, qbm
+
+
+def bm_monthly_scaled_daily_mean_flow(data, cal_mask, precipitation="precipitation", streamflow="streamflow"):
+    """Calculate the daily mean flow scaled by monthly precipitation anomalies.
+
+    This benchmark combines the daily mean flow climatology with monthly precipitation
+    scaling. For each month, it scales the daily mean flow pattern based on how much
+    higher or lower that month's total precipitation is compared to the long-term average
+    for that month during the calibration period.
+
+    Parameters
+    ----------
+    data : pandas DataFrame
+        Input data containing precipitation and streamflow columns.
+    cal_mask : pandas Series
+        Boolean mask for the calibration period.
+    precipitation : str, optional
+        Name of the precipitation column in the input data. Default is 'precipitation'.
+    streamflow : str, optional
+        Name of the streamflow column in the input data. Default is 'streamflow'.
+
+    Returns
+    -------
+    bm_vals : pandas Series
+        Series containing monthly scaling factors for each year-month combination.
+    qbm : pandas DataFrame
+        Benchmark flow time series for the monthly scaled daily mean flow benchmark model.
+
+    Notes
+    -----
+    The benchmark works as follows:
+    1. Calculate daily mean flow climatology from calibration period
+    2. Calculate mean TOTAL monthly precipitation for each calendar month during calibration period
+    3. For each month in the dataset:
+       - Calculate total precipitation for that month
+       - Compute scaling factor = month_precip / mean_total_monthly_precip_cal[month]
+       - Scale the daily mean flow pattern by this factor for all days in that month
+    4. For months with zero calibration precipitation, scaling factor is set to 1.0
+    """
+
+    # Step 1: Get the daily mean flow climatology from calibration period
+    cal_set = data[streamflow].loc[cal_mask]
+    daily_mean_flow = cal_set.groupby(cal_set.index.dayofyear).mean()
+
+    # Step 2: Calculate mean total monthly precipitation during calibration period
+    cal_precip = data[precipitation].loc[cal_mask]
+
+    # Group by year-month to get monthly totals, then take mean across years for each month
+    monthly_totals_cal = cal_precip.groupby([cal_precip.index.year, cal_precip.index.month]).sum()
+    mean_monthly_precip_cal = monthly_totals_cal.groupby(level=1).mean()  # Average by month (1-12)
+
+    # Step 3: Calculate monthly precipitation for all year-months in the dataset
+    monthly_precip_all = data[precipitation].groupby([data.index.year, data.index.month]).sum()
+
+    # Step 4: Calculate scaling factors for each year-month
+    bm_vals = pd.Series(index=monthly_precip_all.index, dtype=float)
+
+    for (year, month), precip_sum in monthly_precip_all.items():
+        if month in mean_monthly_precip_cal.index:
+            # Avoid division by zero for months with no calibration precipitation
+            if mean_monthly_precip_cal[month] > 0:
+                bm_vals[(year, month)] = precip_sum / mean_monthly_precip_cal[month]
+            else:
+                # If calibration month had 0 precip, don't scale
+                bm_vals[(year, month)] = 1.0
+
+    # Step 5: Create the benchmark time series
+    # Map daily mean flow to all days
+    base_flow_series = data.index.dayofyear.map(daily_mean_flow)
+
+    # Map monthly scaling factors to all days
+    year_month_tuples = list(zip(data.index.year, data.index.month))
+    scaling_series = pd.Series([bm_vals.get((y, m), np.nan) for y, m in year_month_tuples], index=data.index)
+
+    # Multiply base flow by scaling factors (vectorized!)
+    qbm = pd.DataFrame({"bm_monthly_scaled_daily_mean_flow": base_flow_series * scaling_series}, index=data.index)
+
+    return bm_vals, qbm
+
+
+# --- Parsimonious Models ---
+
+
 def adjusted_precipitation_benchmark(
     data, cal_mask, precipitation="precipitation", streamflow="streamflow", optimization_method="brute_force"
 ):
@@ -855,6 +1118,7 @@ def create_bm(
         "monthly_median_flow",
         "daily_mean_flow",
         "daily_median_flow",
+        "eckhardt_baseflow",  # New baseflow seperation benchmark
         # Long-term rainfall-runoff ratio benchmarks
         "rainfall_runoff_ratio_to_all",
         "rainfall_runoff_ratio_to_annual",
@@ -865,6 +1129,9 @@ def create_bm(
         "monthly_rainfall_runoff_ratio_to_monthly",
         "monthly_rainfall_runoff_ratio_to_daily",
         "monthly_rainfall_runoff_ratio_to_timestep",
+        # Precipitation anomaly benchmarks
+        "annual_scaled_daily_mean_flow",
+        "monthly_scaled_daily_mean_flow",
         # Schaefli & Gupta (2007) benchmarks
         "scaled_precipitation_benchmark",  # equivalent to "rainfall_runoff_ratio_to_daily"
         "adjusted_precipitation_benchmark",
@@ -906,6 +1173,9 @@ def create_bm(
 
     # --- Benchmarks relying on precipitation and streamflow
 
+    elif benchmark == "eckhardt_baseflow":
+        bm_vals, qbm = bm_eckhardt_baseflow(data, cal_mask, precipitation=precipitation, streamflow=streamflow)
+
     elif benchmark == "rainfall_runoff_ratio_to_all":
         bm_vals, qbm = bm_rainfall_runoff_ratio_to_all(
             data, cal_mask, precipitation=precipitation, streamflow=streamflow
@@ -919,6 +1189,16 @@ def create_bm(
 
     elif benchmark == "rainfall_runoff_ratio_to_monthly":
         bm_vals, qbm = bm_rainfall_runoff_ratio_to_monthly(
+            data, cal_mask, precipitation=precipitation, streamflow=streamflow
+        )
+
+    elif benchmark == "annual_scaled_daily_mean_flow":
+        bm_vals, qbm = bm_annual_scaled_daily_mean_flow(
+            data, cal_mask, precipitation=precipitation, streamflow=streamflow
+        )
+
+    elif benchmark == "monthly_scaled_daily_mean_flow":
+        bm_vals, qbm = bm_monthly_scaled_daily_mean_flow(
             data, cal_mask, precipitation=precipitation, streamflow=streamflow
         )
 

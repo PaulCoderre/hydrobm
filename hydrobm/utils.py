@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from scipy.optimize import Bounds, minimize, minimize_scalar  # differential_evolution,
 
 from .metrics import mse
@@ -319,6 +320,179 @@ def minimize_aspb(scaled_precip, streamflow, max_lag=30, max_window=90, method="
     best_mse = res.fun
 
     return int(best_lag), int(best_window), best_mse
+
+
+# --- Eckhardt Baseflow utility functions
+
+
+# Parameter estimation for Eckhardt
+def estimate_eckhardt_parameters(streamflow, precip, precip_window_days=3, precip_threshold=0.1):
+    """
+    Estimate both recession coefficient (k) and maximum baseflow index (BFI_max) which are required for
+    baseflow separation as outlined by Eckhardt (2005).
+
+    This function combines recession analysis to estimate k with the backward filter
+    method from Collischonn & Fan (2013) to estimate BFI_max. Automatically detects
+    the timestep from the data and adjusts time window accordingly.
+
+    Parameters
+    ----------
+    streamflow : pandas Series
+        Observed streamflow with DatetimeIndex.
+    precip : pandas Series
+        Precipitation data with DatetimeIndex.
+    precip_window_days : float, optional
+        Number of DAYS to check for precipitation when identifying recessions.
+        Automatically converted to appropriate number of timesteps based on data frequency.
+        Default is 3 days.
+    precip_threshold : float, optional
+        Precipitation threshold in same units as precip data (e.g., mm/day or kg/m²/s).
+        Default is 0.1.
+
+    Returns
+    -------
+    k : float
+        Recession coefficient estimated from recession periods (for native timestep).
+    BFI_max : float
+        Maximum baseflow index estimated using backward filter method.
+
+    References
+    ----------
+    Eckhardt, K. (2005). How to construct recursive digital filters for baseflow separation.
+    Hydrological Processes, 19(2), 507-515.
+
+    Collischonn, W., & Fan, F. M. (2013). Defining parameters for Eckhardt's digital baseflow filter.
+    Hydrological Processes, 27(18), 2614–2622. https://doi.org/10.1002/hyp.9391
+    """
+    # Detect timestep
+    time_diff = streamflow.index.to_series().diff()
+    median_timestep = time_diff.median()
+
+    if isinstance(median_timestep, pd.Timedelta):
+        delta_t_days = median_timestep.total_seconds() / 86400
+    else:
+        delta_t_days = float(median_timestep)
+
+    # Convert precipitation window from days to number of periods
+    precip_window_periods = max(1, int(np.ceil(precip_window_days / delta_t_days)))
+
+    # print(f"    Detected timestep: {delta_t_days:.4f} days")
+    # print(f"    Precipitation window: {precip_window_days} days = {precip_window_periods} periods")
+
+    # ===========================
+    # Step 1: Estimate k from recession periods
+    # ===========================
+    k_values = []
+
+    # Identify periods with no precipitation
+    no_precip = precip.rolling(window=precip_window_periods, min_periods=1).sum() < precip_threshold
+
+    # Flow is declining
+    declining = streamflow.diff() < 0
+
+    # Combined condition: recession period
+    recession_mask = no_precip & declining
+
+    # Calculate k for recession days: k = Q[t] / Q[t-1]
+    for t in range(1, len(streamflow)):
+        if recession_mask.iloc[t] and streamflow.iloc[t] > 0 and streamflow.iloc[t - 1] > 0:
+            k_t = streamflow.iloc[t] / streamflow.iloc[t - 1]
+            k_values.append(k_t)
+
+    # Calculate the final value of k
+    k = np.median(k_values)
+    # print(f"    k = {k:.6f} (from {len(k_values)} recession periods)")
+
+    # ===========================
+    # Step 2: Estimate BFI_max using backward filter
+    # ===========================
+
+    Q_values = streamflow.values
+    n = len(Q_values)
+
+    # Initialize backward baseflow array
+    baseflow_backward = np.zeros(n)
+
+    # Start from the end: assume last timestep is all baseflow
+    baseflow_backward[-1] = Q_values[-1]
+
+    # Apply backward filter: b'[t] = b'[t+1] / k
+    for t in range(n - 2, -1, -1):  # Go backward from second-to-last to first
+        if Q_values[t] > 0:
+            baseflow_backward[t] = baseflow_backward[t + 1] / k
+            # Baseflow cannot exceed total flow
+            baseflow_backward[t] = min(baseflow_backward[t], Q_values[t])
+        else:
+            baseflow_backward[t] = 0
+
+    # BFI_max is the ratio of total baseflow to total streamflow (Equation 11)
+    BFI_max = np.sum(baseflow_backward) / np.sum(Q_values)
+    #  print(f"    BFI_max = {BFI_max:.3f} (backward filter method)")
+
+    return k, BFI_max
+
+
+# Calculation function for Eckhardt
+def eckhardt_filter(Q, BFI_max, k):
+    """
+    Eckhardt two-parameter digital filter for baseflow separation.
+
+    The Eckhardt filter was found to be the best of 9 evaluated baseflow
+    separation methods in Xie et al. (2020), showing superior performance
+    across diverse catchment conditions.
+
+    Parameters
+    ----------
+    Q : pandas Series or numpy array
+        Streamflow time series.
+    BFI_max : float
+        Maximum baseflow index.
+    k : float
+        Recession constant.
+
+    Returns
+    -------
+    baseflow : pandas Series or numpy array
+        Separated baseflow component.
+
+    References
+    ----------
+    Eckhardt, K. (2005). How to construct recursive digital filters for baseflow separation.
+    Hydrological Processes, 19(2), 507-515.
+
+    Xie, J., Liu, X., Wang, K., Yang, T., Liang, K., & Liu, C. (2020). Evaluation of typical
+    methods for baseflow separation in the contiguous United States. Journal of Hydrology, 583,
+    124628. https://doi.org/10.1016/j.jhydrol.2020.124628
+
+    """
+
+    # Check input type and extract values
+    is_series = isinstance(Q, pd.Series)
+    if is_series:
+        Q_values = Q.values
+        index = Q.index
+    else:
+        Q_values = np.asarray(Q)
+
+    baseflow = np.zeros(len(Q_values))
+    baseflow[0] = Q_values[0] * BFI_max  # Initialize with fraction of first flow
+
+    # Apply Eckhardt filter
+    for t in range(1, len(Q_values)):
+        if Q_values[t] > 0:
+            baseflow[t] = ((1 - BFI_max) * k * baseflow[t - 1] + (1 - k) * BFI_max * Q_values[t]) / (
+                1 - k * BFI_max
+            )
+            # Baseflow cannot exceed total flow
+            baseflow[t] = min(baseflow[t], Q_values[t])
+        else:
+            baseflow[t] = 0
+
+    # Return in same format as input
+    if is_series:
+        return pd.Series(baseflow, index=index)
+    else:
+        return baseflow
 
 
 # --- Snow accumulation and melt model
