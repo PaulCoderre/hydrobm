@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 from .metrics import calculate_metric
-from .utils import optimize_apb, optimize_aspb, estimate_eckhardt_parameters, eckhardt_filter
+from .utils import eckhardt_filter, estimate_eckhardt_parameters, optimize_apb, optimize_aspb
 
 # from scipy.optimize import Bounds, minimize, minimize_scalar
 
@@ -1099,7 +1099,7 @@ def create_bm(
         "monthly_mean_flow",
         "monthly_median_flow",
         "daily_mean_flow",
-        "daily_median_flow",  #
+        "daily_median_flow",
         # Long-term rainfall-runoff ratio benchmarks
         "rainfall_runoff_ratio_to_all",
         "rainfall_runoff_ratio_to_annual",

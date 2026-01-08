@@ -1,7 +1,6 @@
 # from hydrobm.benchmarks import create_bm # manual import from top-level folder only
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import pytest
 
 from ..benchmarks import create_bm, evaluate_bm
