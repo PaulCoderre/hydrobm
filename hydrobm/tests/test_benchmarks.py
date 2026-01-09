@@ -149,11 +149,15 @@ def test_eckhardt_baseflow():
     k_estimated, BFI_max_estimated = bm_v
 
     assert np.isclose(
-        k_estimated, k_true, atol=0.02
+        k_estimated,
+        k_true,
+        atol=0.0005,  # Tolerance between +- 0.05 % for synthetic data
     ), f"Failed Eckhardt T1a: k={k_estimated:.4f} should be close to {k_true}"
 
     assert np.isclose(
-        BFI_max_estimated, BFI_true, atol=0.05
+        BFI_max_estimated,
+        BFI_true,
+        atol=0.005,  # Tolearance between +- 0.5%, estimated iteratively so a looser tolerance is appropriate
     ), f"Failed Eckhardt T1b: BFI_max={BFI_max_estimated:.4f} should be close to {BFI_true:.4f}"
 
     # ========================================================================

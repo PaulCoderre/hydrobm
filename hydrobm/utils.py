@@ -376,9 +376,6 @@ def estimate_eckhardt_parameters(streamflow, precip, precip_window_days=3, preci
     # Convert precipitation window from days to number of periods
     precip_window_periods = max(1, int(np.ceil(precip_window_days / delta_t_days)))
 
-    # print(f"    Detected timestep: {delta_t_days:.4f} days")
-    # print(f"    Precipitation window: {precip_window_days} days = {precip_window_periods} periods")
-
     # ===========================
     # Step 1: Estimate k from recession periods
     # ===========================
@@ -401,7 +398,6 @@ def estimate_eckhardt_parameters(streamflow, precip, precip_window_days=3, preci
 
     # Calculate the final value of k
     k = np.median(k_values)
-    # print(f"    k = {k:.6f} (from {len(k_values)} recession periods)")
 
     # ===========================
     # Step 2: Estimate BFI_max using backward filter
@@ -427,7 +423,6 @@ def estimate_eckhardt_parameters(streamflow, precip, precip_window_days=3, preci
 
     # BFI_max is the ratio of total baseflow to total streamflow (Equation 11)
     BFI_max = np.sum(baseflow_backward) / np.sum(Q_values)
-    #  print(f"    BFI_max = {BFI_max:.3f} (backward filter method)")
 
     return k, BFI_max
 
