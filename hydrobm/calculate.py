@@ -145,7 +145,7 @@ def calc_bme(
     metrics=["rmse"],
     optimization_method="brute_force",
     # BME formulation
-    formulation="nse_bme",
+    formulation="bme_nse",
     # Snow model inputs
     calc_snowmelt=False,
     temperature="temperature",
@@ -176,8 +176,8 @@ def calc_bme(
         Optimization method for benchmark model calibration. Default is 'brute_force'.
     formulation : str, optional
         BME formulation. Options:
-        - 'nse_bme' (default): BME = 1 - sum((q_obs-q_sim)^2) / sum((q_obs-q_b)^2)
-        - 'kge_bme': BME = (KGE_model - KGE_benchmark) / (1 - KGE_benchmark)
+        - 'bme_nse' (default): BME = 1 - sum((q_obs-q_sim)^2) / sum((q_obs-q_b)^2)
+        - 'bme_kge': BME = (KGE_model - KGE_benchmark) / (1 - KGE_benchmark)
     calc_snowmelt : bool, optional
         Flag to run a basic snow accumulation and melt model. Default is False.
     temperature : str, optional
@@ -209,7 +209,7 @@ def calc_bme(
     if simulated_flow not in data.columns:
         raise ValueError(f"Simulated flow column '{simulated_flow}' not found in the input data")
     # Input check: valid formulation
-    valid_formulations = ["nse_bme", "kge_bme"]
+    valid_formulations = ["bme_nse", "bme_kge"]
     if formulation not in valid_formulations:
         raise ValueError(f"formulation must be one of {valid_formulations}, got '{formulation}'")
 
@@ -239,9 +239,9 @@ def calc_bme(
     for i, benchmark in enumerate(benchmarks):
         q_bm = benchmark_flows["bm_" + benchmark]
 
-        if formulation == "nse_bme":
+        if formulation == "bme_nse":
             bme_cal, bme_val = bme_nse(q_obs, q_sim, q_bm, cal_mask, val_mask=val_mask)
-        elif formulation == "kge_bme":
+        elif formulation == "bme_kge":
             bme_cal, bme_val = bme_kge(q_obs, q_sim, q_bm, cal_mask, val_mask=val_mask)
 
         bme_cal_scores.append(bme_cal)
