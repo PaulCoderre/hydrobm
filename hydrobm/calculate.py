@@ -2,7 +2,7 @@ import pandas as pd
 import xarray as xr
 
 from .benchmarks import create_bm, evaluate_bm
-from .utils import rain_to_melt, bme_nse, bme_kge
+from .utils import bme_kge, bme_nse, rain_to_melt
 
 
 # Main function to calculate metric scores for a given set of benchmark models
@@ -250,8 +250,8 @@ def calc_bme(
     # Package BME scores
     bme_scores = {
         "benchmarks": benchmarks,
-        f"bme_cal": bme_cal_scores,
-        f"bme_val": bme_val_scores,
+        f"{formulation}_cal": bme_cal_scores,
+        f"{formulation}_val": bme_val_scores,
     }
 
     return bme_scores, benchmark_flows, results

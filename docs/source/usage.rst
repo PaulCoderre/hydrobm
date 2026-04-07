@@ -24,13 +24,13 @@ accessible outside of this main function too for more granular setups.
 Benchmark Efficiency (BME) function
 -------------------------
 
-HydroBM also provides a function to calculate skill scores termed benchmark 
-efficiencies (BME) (Schaefli & Gupta, 2007) between hydrological model 
-simulations and benchmark timeseries. This function supports the 
-Schaefli and Gupta (2007) and Siebert (2001) formulation of the BME skill score, 
+HydroBM also provides a function to calculate skill scores termed benchmark
+efficiencies (BME) (Schaefli & Gupta, 2007) between hydrological model
+simulations and benchmark timeseries. This function supports the
+Schaefli and Gupta (2007) and Siebert (2001) formulation of the BME skill score,
 as well as a skill score formulation of the KGE (Knoben et al. 2019). This function
 Is functionally identical to calc_bm, but also requires simulated streamflow and
-the desired formulation of the BME. 
+the desired formulation of the BME.
 
 .. autofunction:: hydrobm.calculate.calc_bme
 
@@ -74,7 +74,7 @@ Benchmarks that rely on on precipitation and streamflow
    hydrobm.benchmarks.bm_monthly_scaled_daily_mean_flow
    hydrobm.benchmarks.bm_scaled_precipitation_benchmark
 
-Parsimonious model benchmarks 
+Parsimonious model benchmarks
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autosummary::
@@ -151,10 +151,8 @@ Knoben, W. J. M., Freer, J. E., & Woods, R. A. (2019). Technical note: Inherent 
 Nash–Sutcliffe and Kling–Gupta efficiency scores. Hydrology and Earth System Sciences, 23(10), 4323–4331.
 https://doi.org/10.5194/hess-23-4323-2019
 
-Schaefli, B., & Gupta, H. V. (2007). Do Nash values have value? Hydrological Processes, 21(15), 2075–2080. 
+Schaefli, B., & Gupta, H. V. (2007). Do Nash values have value? Hydrological Processes, 21(15), 2075–2080.
 https://doi.org/10.1002/hyp.6825
 
-Seibert, J. (2001). On the need for benchmarks in hydrological modelling. Hydrological Processes, 15(6), 
+Seibert, J. (2001). On the need for benchmarks in hydrological modelling. Hydrological Processes, 15(6),
 1063–1064. https://doi.org/10.1002/hyp.446
-
-

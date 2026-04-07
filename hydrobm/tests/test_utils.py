@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ..utils import rain_to_melt, bme_nse, bme_kge
+from ..utils import bme_kge, bme_nse, rain_to_melt
 
 
 def test_rain_to_melt():

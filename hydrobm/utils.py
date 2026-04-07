@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import Bounds, minimize, minimize_scalar  # differential_evolution,
 
-from .metrics import mse, kge, filter_nan
+from .metrics import kge, mse
 
 # --- Wrapper functions for adjusted precipitation benchmark
 # and adjusted smoothed precipitation benchmark optimization
@@ -600,9 +600,11 @@ def bme_nse(q_obs, q_sim, q_bm, cal_mask, val_mask=None):
 
     References
     ----------
-    Seibert, J. (2001). On the need for benchmarks in hydrological modelling. Hydrological Processes, 15(6), 1063–1064. https://doi.org/10.1002/hyp.446
+    Seibert, J. (2001). On the need for benchmarks in hydrological modelling.
+    Hydrological Processes, 15(6), 1063–1064. https://doi.org/10.1002/hyp.446
 
-    Schaefli, B., & Gupta, H. V. (2007). Do Nash values have value? Hydrological Processes, 21(15), 2075–2080. https://doi.org/10.1002/hyp.6825
+    Schaefli, B., & Gupta, H. V. (2007). Do Nash values have value?
+    Hydrological Processes, 21(15), 2075–2080. https://doi.org/10.1002/hyp.6825
 
 
     """
