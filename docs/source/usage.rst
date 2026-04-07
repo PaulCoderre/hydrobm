@@ -22,14 +22,14 @@ accessible outside of this main function too for more granular setups.
 
 
 Benchmark Efficiency (BME) function
--------------------------
+-------------------------------------------
 
 HydroBM also provides a function to calculate skill scores termed benchmark
 efficiencies (BME) (Schaefli & Gupta, 2007) between hydrological model
 simulations and benchmark timeseries. This function supports the
 Schaefli and Gupta (2007) and Siebert (2001) formulation of the BME skill score,
 as well as a skill score formulation of the KGE (Knoben et al. 2019). This function
-Is functionally identical to calc_bm, but also requires simulated streamflow and
+is functionally identical to calc_bm, but also requires simulated streamflow and
 the desired formulation of the BME.
 
 .. autofunction:: hydrobm.calculate.calc_bme
@@ -56,7 +56,7 @@ Benchmarks that rely on streamflow data only
    hydrobm.benchmarks.bm_daily_mean_flow
    hydrobm.benchmarks.bm_daily_median_flow
 
-Benchmarks that rely on on precipitation and streamflow
+Benchmarks that rely on precipitation and streamflow
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autosummary::
@@ -145,7 +145,7 @@ Utilities
 
 
 References
----------
+------------
 
 Knoben, W. J. M., Freer, J. E., & Woods, R. A. (2019). Technical note: Inherent benchmark or not? Comparing
 Nash–Sutcliffe and Kling–Gupta efficiency scores. Hydrology and Earth System Sciences, 23(10), 4323–4331.
